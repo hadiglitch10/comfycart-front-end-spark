@@ -40,7 +40,7 @@ const Navbar = ({ toggleCart }: NavbarProps) => {
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2">
             <ShoppingCart className="h-6 w-6 text-primary" />
-            <span className="font-poppins font-bold text-xl">ComfyCart</span>
+            <span className="font-poppins font-bold text-xl">hadiCart</span>
           </Link>
 
           {/* Desktop Navigation */}
