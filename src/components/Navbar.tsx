@@ -68,7 +68,7 @@ const Navbar = ({ toggleCart }: NavbarProps) => {
           <div className="hidden md:flex items-center gap-4">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="light" size="sm" className="rounded-full">
+                <Button variant="ghost" size="icon" className="rounded-full">
                   <User className="h-5 w-5" />
                 </Button>
               </DropdownMenuTrigger>

@@ -72,7 +72,7 @@ const Products = () => {
             <div className="flex justify-between items-center mb-4">
               <h2 className="font-medium text-lg">Filters</h2>
               <Button 
-                variant="light" 
+                variant="ghost" 
                 size="sm" 
                 onClick={clearFilters}
                 className="h-8 text-sm"
@@ -149,7 +149,7 @@ const Products = () => {
             
             {/* Mobile Filter Button */}
             <Button 
-              variant="outline-primary" 
+              variant="outline" 
               className="md:hidden flex items-center gap-2"
               onClick={() => setShowFilters(!showFilters)}
             >
@@ -165,7 +165,7 @@ const Products = () => {
                 <h2 className="font-medium">Filters</h2>
                 <div className="flex items-center gap-4">
                   <Button 
-                    variant="light" 
+                    variant="ghost" 
                     size="sm" 
                     onClick={clearFilters}
                     className="h-8 text-sm"
@@ -173,8 +173,8 @@ const Products = () => {
                     Clear All
                   </Button>
                   <Button 
-                    variant="light" 
-                    size="sm"
+                    variant="ghost" 
+                    size="icon" 
                     className="h-8 w-8"
                     onClick={() => setShowFilters(false)}
                   >
@@ -188,7 +188,7 @@ const Products = () => {
                 <h3 className="font-medium mb-3">Categories</h3>
                 <div className="flex flex-wrap gap-2">
                   <Button
-                    variant={selectedCategory === "" ? "primary" : "outline-primary"}
+                    variant={selectedCategory === "" ? "default" : "outline"}
                     size="sm"
                     onClick={() => setSelectedCategory("")}
                     className="h-8"
@@ -198,7 +198,7 @@ const Products = () => {
                   {categories.map((category) => (
                     <Button
                       key={category}
-                      variant={selectedCategory === category ? "primary" : "outline-primary"}
+                      variant={selectedCategory === category ? "default" : "outline"}
                       size="sm"
                       onClick={() => setSelectedCategory(category)}
                       className="h-8 capitalize"

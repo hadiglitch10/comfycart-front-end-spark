@@ -44,7 +44,7 @@ const CartSidebar = ({ isOpen, onClose }: CartSidebarProps) => {
           {/* Header */}
           <div className="flex justify-between items-center p-4 border-b">
             <h2 className="font-poppins text-xl font-semibold">Shopping Cart</h2>
-            <Button variant="light" size="sm" onClick={onClose}>
+            <Button variant="ghost" size="icon" onClick={onClose}>
               <X className="h-5 w-5" />
             </Button>
           </div>
@@ -125,7 +125,7 @@ const CartSidebar = ({ isOpen, onClose }: CartSidebarProps) => {
                   Checkout
                 </Button>
                 <Button 
-                  variant="outline-primary" 
+                  variant="outline" 
                   className="w-full"
                   onClick={clearCart}
                 >

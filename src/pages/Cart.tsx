@@ -115,7 +115,7 @@ const Cart = () => {
           {/* Actions */}
           <div className="flex justify-between items-center mt-4">
             <Button 
-              variant="outline-primary" 
+              variant="outline" 
               asChild
               className="text-sm"
             >
@@ -125,7 +125,7 @@ const Cart = () => {
             </Button>
             
             <Button 
-              variant="danger" 
+              variant="destructive" 
               onClick={clearCart}
               className="text-sm"
             >
