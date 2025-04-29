@@ -319,7 +319,7 @@ const Profile = () => {
                         </td>
                         <td className="py-4 px-4 text-right">${order.total.toFixed(2)}</td>
                         <td className="py-4 px-4 text-right">
-                          <Button variant="outline" size="sm">Details</Button>
+                          <Button variant="outline-primary" size="sm">Details</Button>
                         </td>
                       </tr>
                     ))}

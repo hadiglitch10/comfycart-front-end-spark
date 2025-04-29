@@ -36,7 +36,7 @@ const Home = () => {
                 <Button className="bg-primary hover:bg-primary/90 text-white" size="lg" asChild>
                   <Link to="/products">Shop Now</Link>
                 </Button>
-                <Button variant="outline" size="lg" asChild>
+                <Button variant="outline-primary" size="lg" asChild>
                   <Link to="/categories">Browse Categories</Link>
                 </Button>
               </div>
