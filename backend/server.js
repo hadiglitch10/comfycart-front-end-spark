@@ -15,8 +15,10 @@ app.use(express.json());  // Parse JSON request body
 // Routes
 const productRoutes = require('./routes/productRoutes');
 const cartRoutes = require('./routes/cartRoutes');
+const userRoutes = require('./routes/userRoutes');
 app.use('/api', productRoutes);
 app.use('/api', cartRoutes);
+app.use('/api', userRoutes);
 // Test route
 app.get('/', (req, res) => {
     res.send('Backend is running');
