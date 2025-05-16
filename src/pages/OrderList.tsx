@@ -24,15 +24,6 @@ const OrderList: React.FC = () => {
     setOrders(savedOrders ? JSON.parse(savedOrders) : []);
   }, [userOrdersKey]);
 
-  // For demo: add a fake order if none exist
-  useEffect(() => {
-    if (orders.length === 0 && user) {
-      const demoOrder = [{ id: "1", date: new Date().toLocaleDateString(), total: 99.99, items: [] }];
-      setOrders(demoOrder);
-      sessionStorage.setItem(userOrdersKey, JSON.stringify(demoOrder));
-    }
-  }, [orders, user, userOrdersKey]);
-
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-8">My Orders</h1>

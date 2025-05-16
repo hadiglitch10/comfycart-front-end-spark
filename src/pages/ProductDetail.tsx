@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getProductById } from "../data/products";
@@ -6,6 +5,7 @@ import { useCart } from "../context/CartContext";
 import { Button } from "@/components/ui/button";
 import { Star, Minus, Plus, ShoppingCart } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "../context/AuthContext";
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -15,6 +15,35 @@ const ProductDetail = () => {
   const { addToCart } = useCart();
   const { toast } = useToast();
   const [quantity, setQuantity] = useState(1);
+  const { user } = useAuth();
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState("");
+  const [success, setSuccess] = useState("");
+  const [error, setError] = useState("");
+
+  // Get all reviews for this product from sessionStorage (for all users)
+  function getAllProductReviews(productId: string) {
+    const reviews: any[] = [];
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const key = sessionStorage.key(i);
+      if (key && key.startsWith('reviews_')) {
+        try {
+          const userReviews = JSON.parse(sessionStorage.getItem(key) || '[]');
+          userReviews.forEach((r: any) => {
+            if (r.productId === productId) {
+              reviews.push(r);
+            }
+          });
+        } catch {}
+      }
+    }
+    return reviews;
+  }
+
+  const allProductReviews = getAllProductReviews(product.id.toString());
+  const averageRating = allProductReviews.length > 0
+    ? (allProductReviews.reduce((sum, r) => sum + r.rating, 0) / allProductReviews.length).toFixed(1)
+    : null;
 
   if (!product) {
     return (
@@ -43,6 +72,39 @@ const ProductDetail = () => {
       description: `${quantity} ${quantity === 1 ? 'item' : 'items'} added to your cart.`,
       duration: 2000,
     });
+  };
+
+  const handleReviewSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+    if (!user) {
+      setError("You must be logged in to leave a review.");
+      return;
+    }
+    if (rating < 1 || rating > 5) {
+      setError("Please select a rating.");
+      return;
+    }
+    if (!comment.trim()) {
+      setError("Please enter a comment.");
+      return;
+    }
+    const userReviewsKey = user.email ? `reviews_${user.email}` : "reviews_guest";
+    const savedReviews = sessionStorage.getItem(userReviewsKey);
+    const reviews = savedReviews ? JSON.parse(savedReviews) : [];
+    const newReview = {
+      id: Date.now().toString(),
+      productId: product.id.toString(),
+      productName: product.title,
+      rating,
+      comment,
+      date: new Date().toISOString(),
+    };
+    sessionStorage.setItem(userReviewsKey, JSON.stringify([newReview, ...reviews]));
+    setSuccess("Review submitted!");
+    setRating(0);
+    setComment("");
   };
 
   return (
@@ -135,6 +197,106 @@ const ProductDetail = () => {
             </ul>
           </div>
         </div>
+      </div>
+
+      <div className="mt-10">
+        {/* Average rating and review count */}
+        <div className="mb-6 flex items-center gap-3">
+          <span className="text-lg font-semibold">Rating:</span>
+          <div className="flex items-center gap-1">
+            {[1,2,3,4,5].map((star) => (
+              <Star key={star} className={`h-5 w-5 ${averageRating && star <= Math.round(Number(averageRating)) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`} />
+            ))}
+          </div>
+          {averageRating ? (
+            <span className="text-base text-gray-700 ml-2">{averageRating} / 5</span>
+          ) : (
+            <span className="text-base text-gray-500 ml-2">No ratings yet</span>
+          )}
+          <span className="text-sm text-gray-500 ml-4">({allProductReviews.length} review{allProductReviews.length === 1 ? '' : 's'})</span>
+        </div>
+        <h2 className="text-xl font-bold mb-4">Leave a Review</h2>
+        {user ? (
+          <form onSubmit={handleReviewSubmit} className="space-y-4 max-w-md">
+            <div>
+              <label className="block mb-1 font-medium">Rating</label>
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    type="button"
+                    key={star}
+                    onClick={() => setRating(star)}
+                    className={
+                      star <= rating
+                        ? "text-yellow-400"
+                        : "text-gray-300"
+                    }
+                    aria-label={`Rate ${star} star${star > 1 ? "s" : ""}`}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill={star <= rating ? "currentColor" : "none"}
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      className="h-6 w-6"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l2.036 6.29a1 1 0 00.95.69h6.631c.969 0 1.371 1.24.588 1.81l-5.37 3.905a1 1 0 00-.364 1.118l2.036 6.29c.3.921-.755 1.688-1.54 1.118l-5.37-3.905a1 1 0 00-1.176 0l-5.37 3.905c-.784.57-1.838-.197-1.54-1.118l2.036-6.29a1 1 0 00-.364-1.118L2.342 11.717c-.783-.57-.38-1.81.588-1.81h6.631a1 1 0 00.95-.69l2.036-6.29z"
+                      />
+                    </svg>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block mb-1 font-medium">Comment</label>
+              <textarea
+                className="w-full border rounded p-2"
+                rows={3}
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                required
+              />
+            </div>
+            {error && <div className="text-red-500 text-sm">{error}</div>}
+            {success && <div className="text-green-600 text-sm">{success}</div>}
+            <button
+              type="submit"
+              className="bg-primary text-white px-4 py-2 rounded hover:bg-primary/90"
+            >
+              Submit Review
+            </button>
+          </form>
+        ) : (
+          <div className="text-gray-600">You must be logged in to leave a review.</div>
+        )}
+      </div>
+
+      {/* Show reviews for this product */}
+      <div className="mt-10">
+        <h2 className="text-xl font-bold mb-4">Your Reviews for this Product</h2>
+        {user ? (
+          allProductReviews.length > 0 ? (
+            <div className="space-y-4">
+              {allProductReviews.map((review) => (
+                <div key={review.id} className="border-b pb-4 last:border-b-0 last:pb-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    {[1,2,3,4,5].map((star) => (
+                      <Star key={star} className={`h-4 w-4 ${star <= review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`} />
+                    ))}
+                    <span className="text-xs text-gray-500 ml-2">{new Date(review.date).toLocaleDateString()}</span>
+                  </div>
+                  <div className="text-gray-800 text-sm mb-1">{review.comment}</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-gray-600">You have not left any reviews for this product yet.</div>
+          )
+        ) : null}
       </div>
     </div>
   );
