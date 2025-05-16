@@ -1,21 +1,38 @@
-
 import { useCart } from "../context/CartContext";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Minus, Plus, ShoppingCart, X, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "../context/AuthContext";
 
 const Cart = () => {
   const { cart, removeFromCart, updateQuantity, clearCart, cartTotal } = useCart();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const userOrdersKey = user?.email ? `orders_${user.email}` : "orders_guest";
 
   const handleCheckout = () => {
+    if (cart.length === 0) return;
+    // Save order to sessionStorage
+    const savedOrders = sessionStorage.getItem(userOrdersKey);
+    const orders = savedOrders ? JSON.parse(savedOrders) : [];
+    const newOrder = {
+      id: Date.now().toString(),
+      date: new Date().toLocaleDateString(),
+      total: cartTotal,
+      items: cart,
+    };
+    const updatedOrders = [newOrder, ...orders];
+    sessionStorage.setItem(userOrdersKey, JSON.stringify(updatedOrders));
+
     toast({
-      title: "Checkout initiated",
-      description: "This is a demo. No actual payment will be processed.",
+      title: "Order placed!",
+      description: "Your order has been added to your orders.",
       duration: 3000,
     });
     clearCart();
+    navigate("/orders");
   };
 
   if (cart.length === 0) {

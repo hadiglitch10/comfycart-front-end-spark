@@ -1,11 +1,11 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { Product } from "../data/products";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Star } from "lucide-react";
+import { ShoppingCart, Star, Heart } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "../context/AuthContext";
 
 type ProductCardProps = {
   product: Product;
@@ -14,7 +14,16 @@ type ProductCardProps = {
 const ProductCard = ({ product }: ProductCardProps) => {
   const { addToCart } = useCart();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const userWishlistKey = user?.email ? `wishlist_${user.email}` : "wishlist_guest";
   const [isHovering, setIsHovering] = useState(false);
+  const [wishlist, setWishlist] = useState<{ id: string; name: string }[]>([]);
+  const isInWishlist = wishlist.some((item) => item.id === String(product.id));
+
+  useEffect(() => {
+    const savedWishlist = sessionStorage.getItem(userWishlistKey);
+    setWishlist(savedWishlist ? JSON.parse(savedWishlist) : []);
+  }, [userWishlistKey]);
 
   const handleAddToCart = () => {
     addToCart({
@@ -29,6 +38,19 @@ const ProductCard = ({ product }: ProductCardProps) => {
       description: `${product.title} has been added to your cart.`,
       duration: 2000,
     });
+  };
+
+  const toggleWishlist = () => {
+    let updatedWishlist;
+    if (isInWishlist) {
+      updatedWishlist = wishlist.filter((item) => item.id !== String(product.id));
+      toast({ title: "Removed from wishlist", description: product.title });
+    } else {
+      updatedWishlist = [...wishlist, { id: String(product.id), name: product.title }];
+      toast({ title: "Added to wishlist", description: product.title });
+    }
+    setWishlist(updatedWishlist);
+    sessionStorage.setItem(userWishlistKey, JSON.stringify(updatedWishlist));
   };
 
   return (
@@ -47,6 +69,13 @@ const ProductCard = ({ product }: ProductCardProps) => {
             }`}
           />
         </Link>
+        <button
+          className="absolute top-2 left-2 bg-white bg-opacity-80 rounded-full p-1 hover:bg-opacity-100"
+          onClick={toggleWishlist}
+          aria-label={isInWishlist ? "Remove from wishlist" : "Add to wishlist"}
+        >
+          <Heart className={`h-5 w-5 ${isInWishlist ? "fill-red-500 stroke-red-500" : "stroke-gray-400"}`} />
+        </button>
         <div className="absolute top-2 right-2 bg-white bg-opacity-80 rounded-full p-1">
           <div className="flex items-center gap-1">
             <Star className="h-4 w-4 fill-yellow-400 stroke-yellow-400" />

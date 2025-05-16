@@ -6,7 +6,7 @@ require('dotenv').config();
 const app = express();
 
 // Middleware
-app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:8080'] })); // Explicitly allow frontend origin
+app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:8080','http://localhost:8081'] })); // Explicitly allow frontend origin
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

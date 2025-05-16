@@ -1,9 +1,9 @@
-
 import { useCart } from "../context/CartContext";
 import { Button } from "@/components/ui/button";
 import { X, Plus, Minus, ShoppingBag } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "../context/AuthContext";
 
 type CartSidebarProps = {
   isOpen: boolean;
@@ -13,15 +13,43 @@ type CartSidebarProps = {
 const CartSidebar = ({ isOpen, onClose }: CartSidebarProps) => {
   const { cart, removeFromCart, updateQuantity, clearCart, cartTotal } = useCart();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   const handleCheckout = () => {
+    if (cart.length === 0) {
+      toast({
+        title: "Cart is empty",
+        description: "Add items to your cart before checkout.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Create order object
+    const order = {
+      id: Date.now().toString(),
+      items: cart,
+      total: cartTotal,
+      date: new Date().toISOString(),
+      status: "completed"
+    };
+
+    // Save order to sessionStorage
+    const userOrdersKey = user?.email ? `orders_${user.email}` : "orders_guest";
+    const savedOrders = sessionStorage.getItem(userOrdersKey);
+    const orders = savedOrders ? JSON.parse(savedOrders) : [];
+    sessionStorage.setItem(userOrdersKey, JSON.stringify([...orders, order]));
+
     toast({
-      title: "Checkout initiated",
-      description: "This is a demo. No actual payment will be processed.",
+      title: "Order placed successfully!",
+      description: "Your order has been placed and will be processed soon.",
       duration: 3000,
     });
+
     clearCart();
     onClose();
+    navigate("/orders");
   };
 
   return (

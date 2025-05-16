@@ -99,10 +99,12 @@ const Login = () => {
                         localStorage.setItem("token", data.token);
                         localStorage.setItem("userId", data.id);
                         localStorage.setItem("userName", data.name);
+                        localStorage.setItem("userEmail", formData.email.toLowerCase());
                     } else {
                         sessionStorage.setItem("token", data.token);
                         sessionStorage.setItem("userId", data.id);
                         sessionStorage.setItem("userName", data.name);
+                        sessionStorage.setItem("userEmail", formData.email.toLowerCase());
                     }
                 }
 

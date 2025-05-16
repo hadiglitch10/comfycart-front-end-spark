@@ -1,5 +1,5 @@
-
 import { createContext, useState, useContext, ReactNode, useEffect } from "react";
+import { useAuth } from "./AuthContext";
 
 export type CartProduct = {
   id: number;
@@ -30,8 +30,11 @@ export const useCart = () => {
 };
 
 export const CartProvider = ({ children }: { children: ReactNode }) => {
+  const { user } = useAuth();
+  const userCartKey = user?.email ? `cart_${user.email}` : "cart_guest";
+
   const [cart, setCart] = useState<CartProduct[]>(() => {
-    const savedCart = localStorage.getItem("cart");
+    const savedCart = localStorage.getItem(userCartKey);
     return savedCart ? JSON.parse(savedCart) : [];
   });
   
@@ -39,16 +42,20 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [cartTotal, setCartTotal] = useState(0);
 
   useEffect(() => {
-    localStorage.setItem("cart", JSON.stringify(cart));
-    
+    localStorage.setItem(userCartKey, JSON.stringify(cart));
     setCartCount(cart.reduce((total, item) => total + item.quantity, 0));
     setCartTotal(cart.reduce((total, item) => total + (item.price * item.quantity), 0));
-  }, [cart]);
+  }, [cart, userCartKey]);
+
+  useEffect(() => {
+    // When user changes (login/logout), load their cart
+    const savedCart = localStorage.getItem(userCartKey);
+    setCart(savedCart ? JSON.parse(savedCart) : []);
+  }, [userCartKey]);
 
   const addToCart = (product: Omit<CartProduct, 'quantity'>) => {
     setCart(prevCart => {
       const existingProduct = prevCart.find(item => item.id === product.id);
-      
       if (existingProduct) {
         return prevCart.map(item => 
           item.id === product.id 
