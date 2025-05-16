@@ -3,6 +3,7 @@ const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const router = express.Router();
+const authMiddleware = require('../middleware/auth');
 
 // Register a new user
 router.post('/user/register', async (req, res) => {
@@ -79,7 +80,7 @@ router.get('/user/', async (req, res) => {
 });
 
 // Get user by ID
-router.get('/user/:id', async (req, res) => {
+router.get('/user/:id', authMiddleware, async (req, res) => {
     try {
         const { id } = req.params;
         const user = await User.findById(id).select('-password');
@@ -94,7 +95,7 @@ router.get('/user/:id', async (req, res) => {
 });
 
 // Edit user
-router.patch('/user/edit', async (req, res, next) => {
+router.patch('/user/edit', authMiddleware, async (req, res, next) => {
     try {
         const { name, email, currPassword, newPassword, confirmNewPassword } = req.body;
         if (!name || !email || !currPassword) {

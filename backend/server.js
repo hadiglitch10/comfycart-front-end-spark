@@ -6,7 +6,7 @@ require('dotenv').config();
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:8080'] })); // Explicitly allow frontend origin
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -32,6 +32,7 @@ const productRoutes = require('./routes/productRoutes');
 const cartRoutes = require('./routes/cartRoutes');
 const userRoutes = require('./routes/userRoutes');
 
+// API route with consistent naming
 app.use('/api', productRoutes);
 app.use('/api', cartRoutes);
 app.use('/api', userRoutes);

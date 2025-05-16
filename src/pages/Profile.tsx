@@ -1,28 +1,23 @@
-
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { User, Mail, MapPin, Phone, Key, ShoppingBag, CreditCard } from "lucide-react";
+import { User, Mail, Key, Loader2, Save, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const Profile = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const [personalInfo, setPersonalInfo] = useState({
-    firstName: "Jane",
-    lastName: "Doe",
-    email: "jane.doe@example.com",
-    phone: "(555) 123-4567"
-  });
-
-  const [address, setAddress] = useState({
-    street: "123 Comfort Street",
-    city: "Cozy Town",
-    state: "CA",
-    zipCode: "12345",
-    country: "United States"
+    firstName: "",
+    lastName: "",
+    email: ""
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -31,21 +26,95 @@ const Profile = () => {
     confirmPassword: ""
   });
 
-  // Mock order history
-  const orders = [
-    { id: "ORD-2023-001", date: "2023-04-10", status: "Delivered", total: 125.95 },
-    { id: "ORD-2023-002", date: "2023-03-22", status: "Delivered", total: 89.99 },
-    { id: "ORD-2023-003", date: "2023-02-15", status: "Delivered", total: 210.50 }
-  ];
+  // Get authentication data
+  const getAuthData = () => {
+    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+    const userId = localStorage.getItem("userId") || sessionStorage.getItem("userId");
+    return { token, userId };
+  };
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        setError("");
+        // Get token and userId from storage (set during login)
+        const { token, userId } = getAuthData();
+        
+        if (!token || !userId) {
+          // Redirect to login if not authenticated
+          toast({
+            title: "Authentication required",
+            description: "Please log in to view your profile",
+            variant: "destructive"
+          });
+          navigate("/login");
+          return;
+        }
+
+        const response = await fetch(`http://localhost:5000/api/user/${userId}`, {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+
+        if (response.status === 401) {
+          // Token expired or invalid
+          toast({
+            title: "Session expired",
+            description: "Please log in again",
+            variant: "destructive"
+          });
+          handleLogout();
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch user data");
+        }
+
+        const userData = await response.json();
+        
+        // Split the name into first and last name
+        const nameParts = userData.name.split(" ");
+        const firstName = nameParts[0] || "";
+        const lastName = nameParts.slice(1).join(" ") || "";
+
+        setPersonalInfo({
+          firstName,
+          lastName,
+          email: userData.email
+        });
+      } catch (error) {
+        setError(error.message || "Failed to load user data");
+        toast({
+          title: "Error",
+          description: error.message || "Failed to load user data",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, [toast, navigate]);
+
+  const handleLogout = () => {
+    // Clear auth data
+    localStorage.removeItem("token");
+    localStorage.removeItem("userId");
+    localStorage.removeItem("userName");
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("userId");
+    sessionStorage.removeItem("userName");
+    
+    // Navigate to login
+    navigate("/login");
+  };
 
   const handlePersonalInfoChange = (e) => {
     const { name, value } = e.target;
     setPersonalInfo(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleAddressChange = (e) => {
-    const { name, value } = e.target;
-    setAddress(prev => ({ ...prev, [name]: value }));
   };
 
   const handlePasswordChange = (e) => {
@@ -53,56 +122,223 @@ const Profile = () => {
     setPasswordData(prev => ({ ...prev, [name]: value }));
   };
 
-  const updatePersonalInfo = (e) => {
+  const updatePersonalInfo = async (e) => {
     e.preventDefault();
-    toast({
-      title: "Profile updated",
-      description: "Your personal information has been updated successfully.",
-    });
-  };
+    setSaving(true);
+    setError("");
+    
+    try {
+      const { token, userId } = getAuthData();
+      
+      if (!token) {
+        toast({
+          title: "Authentication required",
+          description: "Please log in to update your profile",
+          variant: "destructive"
+        });
+        navigate("/login");
+        return;
+      }
+      
+      if (!personalInfo.firstName.trim() || !personalInfo.lastName.trim() || !personalInfo.email.trim()) {
+        setError("All fields are required");
+        toast({
+          title: "Error",
+          description: "All fields are required",
+          variant: "destructive"
+        });
+        return;
+      }
 
-  const updateAddress = (e) => {
-    e.preventDefault();
-    toast({
-      title: "Address updated",
-      description: "Your shipping address has been updated successfully.",
-    });
-  };
-
-  const updatePassword = (e) => {
-    e.preventDefault();
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      // Email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(personalInfo.email)) {
+        setError("Please enter a valid email address");
+        toast({
+          title: "Error",
+          description: "Please enter a valid email address",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      const response = await fetch("http://localhost:5000/api/user/edit", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: `${personalInfo.firstName} ${personalInfo.lastName}`,
+          email: personalInfo.email,
+          currPassword: passwordData.currentPassword
+        })
+      });
+      
+      if (response.status === 401) {
+        toast({
+          title: "Session expired",
+          description: "Please log in again",
+          variant: "destructive"
+        });
+        handleLogout();
+        return;
+      }
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to update profile");
+      }
+      
+      toast({
+        title: "Profile updated",
+        description: "Your personal information has been updated successfully."
+      });
+      
+      // Update localStorage/sessionStorage with new name if it was changed
+      const newName = `${personalInfo.firstName} ${personalInfo.lastName}`;
+      if (localStorage.getItem("userName")) {
+        localStorage.setItem("userName", newName);
+      } else if (sessionStorage.getItem("userName")) {
+        sessionStorage.setItem("userName", newName);
+      }
+      
+      // Clear password field after successful update
+      setPasswordData(prev => ({
+        ...prev,
+        currentPassword: ""
+      }));
+      
+    } catch (error) {
+      setError(error.message || "Failed to update profile");
       toast({
         title: "Error",
-        description: "New passwords do not match.",
-        variant: "destructive",
+        description: error.message || "Failed to update profile",
+        variant: "destructive"
       });
-      return;
+    } finally {
+      setSaving(false);
     }
-    
-    setPasswordData({
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: ""
-    });
-    
-    toast({
-      title: "Password updated",
-      description: "Your password has been updated successfully.",
-    });
   };
+
+  const updatePassword = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    setError("");
+    
+    try {
+      const { token } = getAuthData();
+      
+      if (!token) {
+        toast({
+          title: "Authentication required",
+          description: "Please log in to update your password",
+          variant: "destructive"
+        });
+        navigate("/login");
+        return;
+      }
+      
+      // Validate password
+      if (passwordData.newPassword.length < 8) {
+        setError("New password must be at least 8 characters");
+        toast({
+          title: "Error",
+          description: "New password must be at least 8 characters",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      if (passwordData.newPassword !== passwordData.confirmPassword) {
+        setError("New passwords do not match");
+        toast({
+          title: "Error",
+          description: "New passwords do not match",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      const response = await fetch("http://localhost:5000/api/user/edit", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: `${personalInfo.firstName} ${personalInfo.lastName}`,
+          email: personalInfo.email,
+          currPassword: passwordData.currentPassword,
+          newPassword: passwordData.newPassword,
+          confirmNewPassword: passwordData.confirmPassword
+        })
+      });
+      
+      if (response.status === 401) {
+        toast({
+          title: "Session expired",
+          description: "Please log in again",
+          variant: "destructive"
+        });
+        handleLogout();
+        return;
+      }
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to update password");
+      }
+      
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: ""
+      });
+      
+      toast({
+        title: "Password updated",
+        description: "Your password has been updated successfully."
+      });
+      
+    } catch (error) {
+      setError(error.message || "Failed to update password");
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update password",
+        variant: "destructive"
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto text-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+        <h2 className="text-xl font-medium">Loading profile...</h2>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto">
       <h1 className="font-poppins font-bold text-3xl mb-2">My Profile</h1>
-      <p className="text-gray-600 mb-8">Manage your account information and track your orders</p>
+      <p className="text-gray-600 mb-8">Manage your account information</p>
+      
+      {error && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
       
       <Tabs defaultValue="personal">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-1">
           <TabsTrigger value="personal">Personal Info</TabsTrigger>
-          <TabsTrigger value="address">Address</TabsTrigger>
-          <TabsTrigger value="password">Password</TabsTrigger>
-          <TabsTrigger value="orders">Orders</TabsTrigger>
         </TabsList>
         
         {/* Personal Info Tab */}
@@ -121,6 +357,7 @@ const Profile = () => {
                     name="firstName"
                     value={personalInfo.firstName}
                     onChange={handlePersonalInfoChange}
+                    required
                   />
                 </div>
                 
@@ -131,129 +368,72 @@ const Profile = () => {
                     name="lastName"
                     value={personalInfo.lastName}
                     onChange={handlePersonalInfoChange}
+                    required
                   />
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="flex items-center gap-1">
-                    <Mail className="h-4 w-4" /> Email
-                  </Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    value={personalInfo.email}
-                    onChange={handlePersonalInfoChange}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="phone" className="flex items-center gap-1">
-                    <Phone className="h-4 w-4" /> Phone Number
-                  </Label>
-                  <Input
-                    id="phone"
-                    name="phone"
-                    value={personalInfo.phone}
-                    onChange={handlePersonalInfoChange}
-                  />
-                </div>
-              </div>
-              
-              <Button type="submit" className="bg-primary hover:bg-primary/90">
-                Save Changes
-              </Button>
-            </form>
-          </div>
-        </TabsContent>
-        
-        {/* Address Tab */}
-        <TabsContent value="address">
-          <div className="bg-white p-6 rounded-lg shadow-sm">
-            <h2 className="font-semibold text-xl mb-6 flex items-center gap-2">
-              <MapPin className="h-5 w-5 text-primary" /> Shipping Address
-            </h2>
-            
-            <form onSubmit={updateAddress} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="street">Street Address</Label>
+                <Label htmlFor="email" className="flex items-center gap-1">
+                  <Mail className="h-4 w-4" /> Email
+                </Label>
                 <Input
-                  id="street"
-                  name="street"
-                  value={address.street}
-                  onChange={handleAddressChange}
+                  id="email"
+                  name="email"
+                  type="email"
+                  value={personalInfo.email}
+                  onChange={handlePersonalInfoChange}
+                  required
                 />
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="city">City</Label>
-                  <Input
-                    id="city"
-                    name="city"
-                    value={address.city}
-                    onChange={handleAddressChange}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="state">State</Label>
-                  <Input
-                    id="state"
-                    name="state"
-                    value={address.state}
-                    onChange={handleAddressChange}
-                  />
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="zipCode">ZIP Code</Label>
-                  <Input
-                    id="zipCode"
-                    name="zipCode"
-                    value={address.zipCode}
-                    onChange={handleAddressChange}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="country">Country</Label>
-                  <Input
-                    id="country"
-                    name="country"
-                    value={address.country}
-                    onChange={handleAddressChange}
-                  />
-                </div>
-              </div>
-              
-              <Button type="submit" className="bg-primary hover:bg-primary/90">
-                Update Address
-              </Button>
-            </form>
-          </div>
-        </TabsContent>
-        
-        {/* Password Tab */}
-        <TabsContent value="password">
-          <div className="bg-white p-6 rounded-lg shadow-sm">
-            <h2 className="font-semibold text-xl mb-6 flex items-center gap-2">
-              <Key className="h-5 w-5 text-primary" /> Change Password
-            </h2>
-            
-            <form onSubmit={updatePassword} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="currentPassword">Current Password</Label>
+                <Label htmlFor="currentPassword">Current Password (required to save changes)</Label>
                 <Input
                   id="currentPassword"
                   name="currentPassword"
                   type="password"
                   value={passwordData.currentPassword}
                   onChange={handlePasswordChange}
+                  required
+                />
+              </div>
+              
+              <Button 
+                type="submit" 
+                className="bg-primary hover:bg-primary/90"
+                disabled={saving}
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="mr-2 h-4 w-4" />
+                    Save Changes
+                  </>
+                )}
+              </Button>
+            </form>
+          </div>
+
+          <div className="bg-white p-6 rounded-lg shadow-sm mt-6">
+            <h2 className="font-semibold text-xl mb-6 flex items-center gap-2">
+              <Key className="h-5 w-5 text-primary" /> Change Password
+            </h2>
+            
+            <form onSubmit={updatePassword} className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="currentPasswordForPwChange">Current Password</Label>
+                <Input
+                  id="currentPasswordForPwChange"
+                  name="currentPassword"
+                  type="password"
+                  value={passwordData.currentPassword}
+                  onChange={handlePasswordChange}
+                  required
                 />
               </div>
               
@@ -266,7 +446,10 @@ const Profile = () => {
                     type="password"
                     value={passwordData.newPassword}
                     onChange={handlePasswordChange}
+                    required
+                    minLength={8}
                   />
+                  <p className="text-xs text-gray-500">Must be at least 8 characters</p>
                 </div>
                 
                 <div className="space-y-2">
@@ -277,65 +460,29 @@ const Profile = () => {
                     type="password"
                     value={passwordData.confirmPassword}
                     onChange={handlePasswordChange}
+                    required
                   />
                 </div>
               </div>
               
-              <Button type="submit" className="bg-primary hover:bg-primary/90">
-                Update Password
+              <Button 
+                type="submit" 
+                className="bg-primary hover:bg-primary/90"
+                disabled={saving}
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <Key className="mr-2 h-4 w-4" />
+                    Update Password
+                  </>
+                )}
               </Button>
             </form>
-          </div>
-        </TabsContent>
-        
-        {/* Orders Tab */}
-        <TabsContent value="orders">
-          <div className="bg-white p-6 rounded-lg shadow-sm">
-            <h2 className="font-semibold text-xl mb-6 flex items-center gap-2">
-              <ShoppingBag className="h-5 w-5 text-primary" /> Order History
-            </h2>
-            
-            {orders.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-3 px-4">Order ID</th>
-                      <th className="text-left py-3 px-4">Date</th>
-                      <th className="text-left py-3 px-4">Status</th>
-                      <th className="text-right py-3 px-4">Total</th>
-                      <th className="text-right py-3 px-4">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {orders.map((order) => (
-                      <tr key={order.id} className="border-b hover:bg-gray-50">
-                        <td className="py-4 px-4">{order.id}</td>
-                        <td className="py-4 px-4">{order.date}</td>
-                        <td className="py-4 px-4">
-                          <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">
-                            {order.status}
-                          </span>
-                        </td>
-                        <td className="py-4 px-4 text-right">${order.total.toFixed(2)}</td>
-                        <td className="py-4 px-4 text-right">
-                          <Button variant="outline" size="sm">Details</Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <ShoppingBag className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                <h3 className="font-medium text-lg mb-1">No orders yet</h3>
-                <p className="text-gray-500 mb-4">When you place orders, they'll appear here</p>
-                <Button asChild>
-                  <Link to="/products">Start Shopping</Link>
-                </Button>
-              </div>
-            )}
           </div>
         </TabsContent>
       </Tabs>

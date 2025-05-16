@@ -1,14 +1,14 @@
-
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useCart } from "../context/CartContext";
-import { useState } from "react";
-import { Search, ShoppingCart, User, Menu, X } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, ShoppingCart, User, Menu, X, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 
 type NavbarProps = {
@@ -20,6 +20,17 @@ const Navbar = ({ toggleCart }: NavbarProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
+  const location = useLocation();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userName, setUserName] = useState("");
+
+  useEffect(() => {
+    // Check if user is logged in
+    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+    const name = localStorage.getItem("userName") || sessionStorage.getItem("userName");
+    setIsLoggedIn(!!token);
+    setUserName(name || "");
+  }, [location.pathname]); // Re-check when path changes (like after login/logout)
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,6 +44,26 @@ const Navbar = ({ toggleCart }: NavbarProps) => {
     setIsMenuOpen(!isMenuOpen);
   };
 
+  const handleLogout = () => {
+    // Clear auth data
+    localStorage.removeItem("token");
+    localStorage.removeItem("userId");
+    localStorage.removeItem("userName");
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("userId");
+    sessionStorage.removeItem("userName");
+    
+    // Update state
+    setIsLoggedIn(false);
+    setUserName("");
+    
+    // Navigate to home
+    navigate("/");
+  };
+
+  // Hide login/signup on those pages
+  const isAuthPage = location.pathname === "/login" || location.pathname === "/signup";
+
   return (
     <header className="bg-white shadow-sm sticky top-0 z-10">
       <div className="container mx-auto px-4">
@@ -40,7 +71,7 @@ const Navbar = ({ toggleCart }: NavbarProps) => {
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2">
             <ShoppingCart className="h-6 w-6 text-primary" />
-            <span className="font-poppins font-bold text-xl">hadiCart</span>
+            <span className="font-poppins font-bold text-xl">ComfyCart</span>
           </Link>
 
           {/* Desktop Navigation */}
@@ -73,15 +104,27 @@ const Navbar = ({ toggleCart }: NavbarProps) => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem asChild>
-                  <Link to="/profile" className="w-full">My Profile</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/login" className="w-full">Login</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/signup" className="w-full">Sign Up</Link>
-                </DropdownMenuItem>
+                {isLoggedIn ? (
+                  <>
+                    <DropdownMenuItem asChild>
+                      <Link to="/profile" className="w-full">My Profile</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleLogout}>
+                      <LogOut className="h-4 w-4 mr-2" /> Logout
+                    </DropdownMenuItem>
+                  </>
+                ) : (
+                  !isAuthPage && (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link to="/login" className="w-full">Login</Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/signup" className="w-full">Sign Up</Link>
+                      </DropdownMenuItem>
+                    </>
+                  )
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
             
@@ -130,9 +173,28 @@ const Navbar = ({ toggleCart }: NavbarProps) => {
               <Link to="/" className="font-medium hover:text-primary transition-colors" onClick={toggleMenu}>Home</Link>
               <Link to="/products" className="font-medium hover:text-primary transition-colors" onClick={toggleMenu}>Products</Link>
               <Link to="/categories" className="font-medium hover:text-primary transition-colors" onClick={toggleMenu}>Categories</Link>
-              <Link to="/profile" className="font-medium hover:text-primary transition-colors" onClick={toggleMenu}>My Profile</Link>
-              <Link to="/login" className="font-medium hover:text-primary transition-colors" onClick={toggleMenu}>Login</Link>
-              <Link to="/signup" className="font-medium hover:text-primary transition-colors" onClick={toggleMenu}>Sign Up</Link>
+              
+              {isLoggedIn ? (
+                <>
+                  <Link to="/profile" className="font-medium hover:text-primary transition-colors" onClick={toggleMenu}>My Profile</Link>
+                  <button 
+                    className="text-left font-medium hover:text-primary transition-colors flex items-center" 
+                    onClick={() => {
+                      handleLogout();
+                      toggleMenu();
+                    }}
+                  >
+                    <LogOut className="h-4 w-4 mr-2" /> Logout
+                  </button>
+                </>
+              ) : (
+                !isAuthPage && (
+                  <>
+                    <Link to="/login" className="font-medium hover:text-primary transition-colors" onClick={toggleMenu}>Login</Link>
+                    <Link to="/signup" className="font-medium hover:text-primary transition-colors" onClick={toggleMenu}>Sign Up</Link>
+                  </>
+                )
+              )}
             </nav>
           </div>
         )}
