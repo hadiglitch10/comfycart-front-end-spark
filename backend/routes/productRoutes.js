@@ -1,6 +1,30 @@
 const express = require('express');
-const Cart = require('../models/Cart'); // Adjust the path if necessary
+const Product = require('../models/Product');
+const Cart = require('../models/Cart');
 const router = express.Router();
+
+// Get all products
+router.get('/products', async (req, res) => {
+    try {
+        const products = await Product.find();
+        res.json(products);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// Get a single product
+router.get('/products/:id', async (req, res) => {
+    try {
+        const product = await Product.findById(req.params.id);
+        if (!product) {
+            return res.status(404).json({ message: 'Product not found' });
+        }
+        res.json(product);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
 
 // Add products to the user's cart
 router.post('/cart/:userId', async (req, res) => {
@@ -8,34 +32,27 @@ router.post('/cart/:userId', async (req, res) => {
         const { userId } = req.params;
         const { productId, quantity } = req.body;
 
-        // Check if the user already has a cart
         let cart = await Cart.findOne({ userId });
 
         if (!cart) {
-            // If no cart, create an empty one for the user
             cart = new Cart({
                 userId,
-                items: [] // Empty cart
+                items: []
             });
         }
 
-        // If cart exists and is empty, add the first item
         if (cart.items.length === 0) {
             cart.items.push({ productId, quantity });
         } else {
-            // If cart is not empty, check if the product already exists
             const existingItem = cart.items.find(item => item.productId.toString() === productId);
 
             if (existingItem) {
-                // If the item exists, update the quantity
                 existingItem.quantity += quantity;
             } else {
-                // If the item doesn't exist, add a new one
                 cart.items.push({ productId, quantity });
             }
         }
 
-        // Save the cart
         await cart.save();
         res.status(201).json({ message: 'Cart created/updated', cart });
     } catch (error) {
@@ -69,7 +86,6 @@ router.delete('/cart/:userId/:productId', async (req, res) => {
             return res.status(404).json({ message: 'Cart not found' });
         }
 
-        // Remove the product from the cart
         cart.items = cart.items.filter(item => item.productId.toString() !== productId);
         await cart.save();
 

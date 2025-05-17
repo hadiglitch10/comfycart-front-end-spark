@@ -1,11 +1,71 @@
-
 import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import { products, getCategories, searchProducts } from "../data/products";
 import ProductCard from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Search, SlidersHorizontal, X } from "lucide-react";
+
+interface Product {
+  _id: string;
+  title: string;
+  price: number;
+  description: string;
+  category: string;
+  image: string;
+  rating: {
+    rate: number;
+    count: number;
+  };
+}
+
+// Sample products data
+const initialProducts: Product[] = [
+  {
+    _id: "1",
+    title: "Luxe Memory Foam Pillow",
+    price: 29.99,
+    description: "Memory foam pillow that contours to your head and neck for maximum comfort and support. Hypoallergenic cover included.",
+    category: "bedroom",
+    image: "https://images.unsplash.com/photo-1584100936595-c0654b55a2e2?q=80&w=2069",
+    rating: { rate: 4.8, count: 125 }
+  },
+  {
+    _id: "2",
+    title: "Ergonomic Office Chair",
+    price: 249.99,
+    description: "Fully adjustable office chair with lumbar support, headrest, and breathable mesh back for all-day comfort.",
+    category: "furniture",
+    image: "https://images.unsplash.com/photo-1579503841516-e0bd7fca5faa?q=80&w=2070",
+    rating: { rate: 4.6, count: 89 }
+  },
+  {
+    _id: "3",
+    title: "Plush Throw Blanket",
+    price: 39.99,
+    description: "Ultra-soft microfiber throw blanket, perfect for staying cozy during movie nights or cold evenings.",
+    category: "living",
+    image: "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?q=80&w=2071",
+    rating: { rate: 4.9, count: 213 }
+  },
+  {
+    _id: "4",
+    title: "Smart LED Desk Lamp",
+    price: 59.99,
+    description: "Adjustable desk lamp with multiple brightness levels, color temperatures, and a built-in USB charging port.",
+    category: "lighting",
+    image: "https://images.unsplash.com/photo-1534189021142-638a4250c776?q=80&w=2066",
+    rating: { rate: 4.7, count: 76 }
+  },
+  {
+    _id: "5",
+    title: "Ceramic Plant Pot Set",
+    price: 34.99,
+    description: "Set of 3 minimalist ceramic plant pots in varying sizes, perfect for succulents and small indoor plants.",
+    category: "decor",
+    image: "https://images.unsplash.com/photo-1485955900006-10f4d324d411?q=80&w=2072",
+    rating: { rate: 4.5, count: 112 }
+  }
+];
 
 const Products = () => {
   const location = useLocation();
@@ -13,24 +73,37 @@ const Products = () => {
   const initialCategory = queryParams.get("category") || "";
   const initialSearchQuery = queryParams.get("search") || "";
 
-  const [filteredProducts, setFilteredProducts] = useState(products);
+  const [products, setProducts] = useState<Product[]>(() => {
+    const savedProducts = localStorage.getItem('products');
+    return savedProducts ? JSON.parse(savedProducts) : initialProducts;
+  });
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>(products);
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [priceRange, setPriceRange] = useState([0, 300]);
   const [showFilters, setShowFilters] = useState(false);
   
-  const categories = getCategories();
+  // Save products to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('products', JSON.stringify(products));
+  }, [products]);
+
+  // Get unique categories from products
+  const categories = [...new Set(products.map(p => p.category))];
   
   // Get min and max prices from products
-  const minPrice = Math.floor(Math.min(...products.map(p => p.price)));
-  const maxPrice = Math.ceil(Math.max(...products.map(p => p.price)));
+  const minPrice = products.length > 0 ? Math.floor(Math.min(...products.map(p => p.price))) : 0;
+  const maxPrice = products.length > 0 ? Math.ceil(Math.max(...products.map(p => p.price))) : 300;
   
   useEffect(() => {
     let result = [...products];
     
     // Apply search filter
     if (searchQuery) {
-      result = searchProducts(searchQuery);
+      result = result.filter(product => 
+        product.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.description.toLowerCase().includes(searchQuery.toLowerCase())
+      );
     }
     
     // Apply category filter
@@ -44,9 +117,9 @@ const Products = () => {
     );
     
     setFilteredProducts(result);
-  }, [searchQuery, selectedCategory, priceRange]);
+  }, [searchQuery, selectedCategory, priceRange, products]);
   
-  const handleSearch = (e) => {
+  const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     // The filtering logic is already handled in the useEffect
   };
@@ -236,7 +309,7 @@ const Products = () => {
           {filteredProducts.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
+                <ProductCard key={product._id} product={product} />
               ))}
             </div>
           ) : (

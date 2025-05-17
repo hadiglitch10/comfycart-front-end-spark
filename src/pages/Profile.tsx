@@ -51,14 +51,14 @@ const Profile = () => {
           ) : (
             <User className="w-full h-full text-gray-400" />
           )}
-        </div>
+                </div>
         <input
           type="file"
           accept="image/*"
           onChange={handleProfilePicChange}
           className="mb-2"
-        />
-      </div>
+                  />
+                </div>
       <Formik
         initialValues={{
           firstName: user?.name.split(" ")[0] || "",
@@ -97,21 +97,21 @@ const Profile = () => {
               <Label htmlFor="firstName">First Name</Label>
               <Field as={Input} name="firstName" id="firstName" />
               <ErrorMessage name="firstName" component="div" className="text-red-500 text-sm" />
-            </div>
+              </div>
             <div>
               <Label htmlFor="lastName">Last Name</Label>
               <Field as={Input} name="lastName" id="lastName" />
               <ErrorMessage name="lastName" component="div" className="text-red-500 text-sm" />
-            </div>
+              </div>
             <div>
               <Label htmlFor="email">Email</Label>
               <Field as={Input} name="email" id="email" type="email" />
               <ErrorMessage name="email" component="div" className="text-red-500 text-sm" />
-            </div>
+              </div>
             <Button type="submit" className="w-full" disabled={isSubmitting || loading}>
               {isSubmitting || loading ? <Loader2 className="animate-spin h-5 w-5 mr-2" /> : <Save className="h-5 w-5 mr-2" />}
-              Save Changes
-            </Button>
+                    Save Changes
+              </Button>
           </Form>
         )}
       </Formik>

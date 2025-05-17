@@ -1,17 +1,27 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { getProductById } from "../data/products";
 import { useCart } from "../context/CartContext";
 import { Button } from "@/components/ui/button";
 import { Star, Minus, Plus, ShoppingCart } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "../context/AuthContext";
 
+interface Product {
+  _id: string;
+  title: string;
+  price: number;
+  description: string;
+  category: string;
+  image: string;
+  rating: {
+    rate: number;
+    count: number;
+  };
+}
+
 const ProductDetail = () => {
   const { id } = useParams();
-  const productId = parseInt(id);
-  const product = getProductById(productId);
-  
+  const [product, setProduct] = useState<Product | null>(null);
   const { addToCart } = useCart();
   const { toast } = useToast();
   const [quantity, setQuantity] = useState(1);
@@ -20,6 +30,12 @@ const ProductDetail = () => {
   const [comment, setComment] = useState("");
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const products = JSON.parse(localStorage.getItem('products') || '[]');
+    const foundProduct = products.find((p: Product) => p._id === id);
+    setProduct(foundProduct || null);
+  }, [id]);
 
   // Get all reviews for this product from sessionStorage (for all users)
   function getAllProductReviews(productId: string) {
@@ -40,7 +56,7 @@ const ProductDetail = () => {
     return reviews;
   }
 
-  const allProductReviews = getAllProductReviews(product.id.toString());
+  const allProductReviews = product ? getAllProductReviews(product._id) : [];
   const averageRating = allProductReviews.length > 0
     ? (allProductReviews.reduce((sum, r) => sum + r.rating, 0) / allProductReviews.length).toFixed(1)
     : null;
@@ -60,7 +76,7 @@ const ProductDetail = () => {
   const handleAddToCart = () => {
     for (let i = 0; i < quantity; i++) {
       addToCart({
-        id: product.id,
+        id: product._id,
         title: product.title,
         price: product.price,
         image: product.image,
@@ -95,7 +111,7 @@ const ProductDetail = () => {
     const reviews = savedReviews ? JSON.parse(savedReviews) : [];
     const newReview = {
       id: Date.now().toString(),
-      productId: product.id.toString(),
+      productId: product._id,
       productName: product.title,
       rating,
       comment,
@@ -215,6 +231,38 @@ const ProductDetail = () => {
           )}
           <span className="text-sm text-gray-500 ml-4">({allProductReviews.length} review{allProductReviews.length === 1 ? '' : 's'})</span>
         </div>
+
+        {/* Reviews List */}
+        {allProductReviews.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-xl font-bold mb-4">Customer Reviews</h2>
+            <div className="space-y-6">
+              {allProductReviews.map((review) => (
+                <div key={review.id} className="bg-white rounded-lg p-4 shadow-sm">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="flex">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`h-4 w-4 ${
+                            i < review.rating
+                              ? "fill-yellow-400 stroke-yellow-400"
+                              : "text-gray-300"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-sm text-gray-500">
+                      {new Date(review.date).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <p className="text-gray-700">{review.comment}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <h2 className="text-xl font-bold mb-4">Leave a Review</h2>
         {user ? (
           <form onSubmit={handleReviewSubmit} className="space-y-4 max-w-md">
@@ -254,49 +302,25 @@ const ProductDetail = () => {
             <div>
               <label className="block mb-1 font-medium">Comment</label>
               <textarea
-                className="w-full border rounded p-2"
-                rows={3}
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
-                required
+                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+                rows={4}
+                placeholder="Share your thoughts about this product..."
               />
             </div>
-            {error && <div className="text-red-500 text-sm">{error}</div>}
-            {success && <div className="text-green-600 text-sm">{success}</div>}
-            <button
-              type="submit"
-              className="bg-primary text-white px-4 py-2 rounded hover:bg-primary/90"
-            >
-              Submit Review
-            </button>
+            {error && <p className="text-red-500 text-sm">{error}</p>}
+            {success && <p className="text-green-500 text-sm">{success}</p>}
+            <Button type="submit" className="w-full">Submit Review</Button>
           </form>
         ) : (
-          <div className="text-gray-600">You must be logged in to leave a review.</div>
+          <div className="text-center py-6 bg-gray-50 rounded-lg">
+            <p className="text-gray-600 mb-4">Please log in to leave a review.</p>
+            <Button asChild>
+              <Link to="/login">Log In</Link>
+            </Button>
+          </div>
         )}
-      </div>
-
-      {/* Show reviews for this product */}
-      <div className="mt-10">
-        <h2 className="text-xl font-bold mb-4">Your Reviews for this Product</h2>
-        {user ? (
-          allProductReviews.length > 0 ? (
-            <div className="space-y-4">
-              {allProductReviews.map((review) => (
-                <div key={review.id} className="border-b pb-4 last:border-b-0 last:pb-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    {[1,2,3,4,5].map((star) => (
-                      <Star key={star} className={`h-4 w-4 ${star <= review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`} />
-                    ))}
-                    <span className="text-xs text-gray-500 ml-2">{new Date(review.date).toLocaleDateString()}</span>
-                  </div>
-                  <div className="text-gray-800 text-sm mb-1">{review.comment}</div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-gray-600">You have not left any reviews for this product yet.</div>
-          )
-        ) : null}
       </div>
     </div>
   );

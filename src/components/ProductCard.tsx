@@ -1,11 +1,23 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useCart } from "../context/CartContext";
-import { Product } from "../data/products";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, Star, Heart } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "../context/AuthContext";
+
+interface Product {
+  _id: string;
+  title: string;
+  price: number;
+  description: string;
+  category: string;
+  image: string;
+  rating: {
+    rate: number;
+    count: number;
+  };
+}
 
 type ProductCardProps = {
   product: Product;
@@ -18,7 +30,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
   const userWishlistKey = user?.email ? `wishlist_${user.email}` : "wishlist_guest";
   const [isHovering, setIsHovering] = useState(false);
   const [wishlist, setWishlist] = useState<{ id: string; name: string }[]>([]);
-  const isInWishlist = wishlist.some((item) => item.id === String(product.id));
+  const isInWishlist = wishlist.some((item) => item.id === product._id);
 
   useEffect(() => {
     const savedWishlist = sessionStorage.getItem(userWishlistKey);
@@ -27,7 +39,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
 
   const handleAddToCart = () => {
     addToCart({
-      id: product.id,
+      id: product._id,
       title: product.title,
       price: product.price,
       image: product.image,
@@ -43,10 +55,10 @@ const ProductCard = ({ product }: ProductCardProps) => {
   const toggleWishlist = () => {
     let updatedWishlist;
     if (isInWishlist) {
-      updatedWishlist = wishlist.filter((item) => item.id !== String(product.id));
+      updatedWishlist = wishlist.filter((item) => item.id !== product._id);
       toast({ title: "Removed from wishlist", description: product.title });
     } else {
-      updatedWishlist = [...wishlist, { id: String(product.id), name: product.title }];
+      updatedWishlist = [...wishlist, { id: product._id, name: product.title }];
       toast({ title: "Added to wishlist", description: product.title });
     }
     setWishlist(updatedWishlist);
@@ -60,7 +72,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
       onMouseLeave={() => setIsHovering(false)}
     >
       <div className="relative aspect-square overflow-hidden">
-        <Link to={`/products/${product.id}`}>
+        <Link to={`/products/${product._id}`}>
           <img
             src={product.image}
             alt={product.title}
@@ -85,7 +97,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
       </div>
       <div className="p-4">
         <p className="text-sm text-gray-500 capitalize mb-1">{product.category}</p>
-        <Link to={`/products/${product.id}`} className="block">
+        <Link to={`/products/${product._id}`} className="block">
           <h3 className="font-medium mb-2 hover:text-primary transition-colors line-clamp-1">
             {product.title}
           </h3>

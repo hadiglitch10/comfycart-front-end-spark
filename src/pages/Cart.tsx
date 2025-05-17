@@ -1,50 +1,78 @@
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { useCart } from "../context/CartContext";
-import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Minus, Plus, ShoppingCart, X, ArrowRight } from "lucide-react";
+import { Trash2, Minus, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "../context/AuthContext";
+
+interface CartItem {
+  id: string;
+  title: string;
+  price: number;
+  image: string;
+  quantity: number;
+}
 
 const Cart = () => {
-  const { cart, removeFromCart, updateQuantity, clearCart, cartTotal } = useCart();
+  const { cart, removeFromCart, updateQuantity } = useCart();
   const { toast } = useToast();
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const userOrdersKey = user?.email ? `orders_${user.email}` : "orders_guest";
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleCheckout = () => {
-    if (cart.length === 0) return;
-    // Save order to sessionStorage
-    const savedOrders = sessionStorage.getItem(userOrdersKey);
-    const orders = savedOrders ? JSON.parse(savedOrders) : [];
-    const newOrder = {
-      id: Date.now().toString(),
-      date: new Date().toLocaleDateString(),
-      total: cartTotal,
-      items: cart,
-    };
-    const updatedOrders = [newOrder, ...orders];
-    sessionStorage.setItem(userOrdersKey, JSON.stringify(updatedOrders));
+  useEffect(() => {
+    // Load cart items from localStorage
+    const savedCart = localStorage.getItem('cart');
+    if (savedCart) {
+      setCartItems(JSON.parse(savedCart));
+    }
+    setIsLoading(false);
+  }, []);
 
+  useEffect(() => {
+    // Save cart items to localStorage whenever they change
+    localStorage.setItem('cart', JSON.stringify(cartItems));
+  }, [cartItems]);
+
+  const handleRemoveItem = (itemId: string) => {
+    removeFromCart(itemId);
+    setCartItems(prevItems => prevItems.filter(item => item.id !== itemId));
     toast({
-      title: "Order placed!",
-      description: "Your order has been added to your orders.",
-      duration: 3000,
+      title: "Item removed",
+      description: "The item has been removed from your cart.",
+      duration: 2000,
     });
-    clearCart();
-    navigate("/orders");
   };
 
-  if (cart.length === 0) {
+  const handleUpdateQuantity = (itemId: string, newQuantity: number) => {
+    if (newQuantity < 1) return;
+    updateQuantity(itemId, newQuantity);
+    setCartItems(prevItems =>
+      prevItems.map(item =>
+        item.id === itemId ? { ...item, quantity: newQuantity } : item
+      )
+    );
+  };
+
+  const subtotal = cartItems.reduce((total, item) => total + item.price * item.quantity, 0);
+  const shipping = subtotal > 0 ? 10 : 0;
+  const total = subtotal + shipping;
+
+  if (isLoading) {
     return (
       <div className="text-center py-12">
-        <ShoppingCart className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-        <h1 className="font-poppins font-semibold text-2xl mb-2">Your Cart is Empty</h1>
-        <p className="text-gray-600 mb-6 max-w-md mx-auto">
-          Looks like you haven't added any products to your cart yet.
-        </p>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+        <p className="mt-4 text-gray-600">Loading cart...</p>
+      </div>
+    );
+  }
+
+  if (cartItems.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <h2 className="font-poppins font-semibold text-2xl mb-4">Your Cart is Empty</h2>
+        <p className="text-gray-600 mb-6">Looks like you haven't added any items to your cart yet.</p>
         <Button asChild>
-          <Link to="/products">Browse Products</Link>
+          <Link to="/products">Start Shopping</Link>
         </Button>
       </div>
     );
@@ -52,140 +80,77 @@ const Cart = () => {
 
   return (
     <div>
-      <h1 className="font-poppins font-bold text-3xl mb-8">Your Shopping Cart</h1>
-      
+      <h1 className="font-poppins font-bold text-3xl mb-8">Shopping Cart</h1>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2">
-          {/* Cart Items */}
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Product
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">
-                    Price
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Quantity
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Total
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {cart.map((item) => (
-                  <tr key={item.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="h-16 w-16 flex-shrink-0">
-                          <Link to={`/products/${item.id}`}>
-                            <img className="h-16 w-16 object-cover rounded" src={item.image} alt={item.title} />
-                          </Link>
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            <Link to={`/products/${item.id}`} className="hover:text-primary transition-colors">
-                              {item.title}
-                            </Link>
-                          </div>
-                          <button 
-                            onClick={() => removeFromCart(item.id)}
-                            className="text-sm text-gray-400 hover:text-red-500 flex items-center mt-1"
-                          >
-                            <X className="h-3 w-3 mr-1" /> Remove
-                          </button>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap hidden sm:table-cell">
-                      <div className="text-sm text-gray-900">${item.price.toFixed(2)}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center border rounded-md w-24">
-                        <button 
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                          className="px-2 py-1 text-gray-600 hover:bg-gray-100"
-                        >
-                          <Minus className="h-3 w-3" />
-                        </button>
-                        <span className="w-8 text-center">{item.quantity}</span>
-                        <button 
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                          className="px-2 py-1 text-gray-600 hover:bg-gray-100"
-                        >
-                          <Plus className="h-3 w-3" />
-                        </button>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right font-medium">
-                      ${(item.price * item.quantity).toFixed(2)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          
-          {/* Actions */}
-          <div className="flex justify-between items-center mt-4">
-            <Button 
-              variant="outline" 
-              asChild
-              className="text-sm"
+        {/* Cart Items */}
+        <div className="lg:col-span-2 space-y-4">
+          {cartItems.map((item) => (
+            <div
+              key={item.id}
+              className="flex items-center gap-4 p-4 bg-white rounded-lg shadow-sm"
             >
-              <Link to="/products">
-                Continue Shopping
-              </Link>
-            </Button>
-            
-            <Button 
-              variant="destructive" 
-              onClick={clearCart}
-              className="text-sm"
-            >
-              Clear Cart
-            </Button>
-          </div>
+              <img
+                src={item.image}
+                alt={item.title}
+                className="w-24 h-24 object-cover rounded-md"
+              />
+              <div className="flex-1">
+                <h3 className="font-medium">{item.title}</h3>
+                <p className="text-gray-600 text-sm">${item.price.toFixed(2)}</p>
+                <div className="flex items-center gap-4 mt-2">
+                  <div className="flex items-center border rounded-md">
+                    <button
+                      onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
+                      className="px-3 py-1 text-gray-600 hover:bg-gray-100"
+                    >
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <span className="px-3 py-1">{item.quantity}</span>
+                    <button
+                      onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
+                      className="px-3 py-1 text-gray-600 hover:bg-gray-100"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => handleRemoveItem(item.id)}
+                    className="text-red-500 hover:text-red-600"
+                  >
+                    <Trash2 className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="font-medium">${(item.price * item.quantity).toFixed(2)}</p>
+              </div>
+            </div>
+          ))}
         </div>
-        
+
         {/* Order Summary */}
-        <div>
-          <div className="bg-gray-50 rounded-lg p-6">
-            <h2 className="font-poppins font-semibold text-xl mb-4">Order Summary</h2>
-            
+        <div className="lg:col-span-1">
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h2 className="font-medium text-lg mb-4">Order Summary</h2>
             <div className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-gray-600">Subtotal</span>
-                <span>${cartTotal.toFixed(2)}</span>
+                <span>${subtotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Shipping</span>
-                <span>Calculated at checkout</span>
+                <span>${shipping.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Tax</span>
-                <span>Calculated at checkout</span>
-              </div>
-              <div className="border-t pt-3 mt-3 font-semibold flex justify-between">
+              <div className="border-t pt-3 flex justify-between font-medium">
                 <span>Total</span>
-                <span>${cartTotal.toFixed(2)}</span>
+                <span>${total.toFixed(2)}</span>
               </div>
             </div>
-            
-            <Button 
-              className="w-full mt-6 bg-primary hover:bg-primary/90 text-white h-12"
-              onClick={handleCheckout}
-            >
-              Proceed to Checkout
-              <ArrowRight className="h-4 w-4 ml-2" />
+            <Button className="w-full mt-6">Proceed to Checkout</Button>
+            <Button variant="outline" asChild className="w-full mt-2">
+              <Link to="/products">Continue Shopping</Link>
             </Button>
-            
-            <p className="text-xs text-gray-500 mt-4 text-center">
-              Secure payments powered by Stripe
-            </p>
           </div>
         </div>
       </div>

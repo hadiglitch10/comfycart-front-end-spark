@@ -23,32 +23,32 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <CartProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
+      <AuthProvider>
+        <CartProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
           <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Layout />}>
-                <Route index element={<Home />} />
-                <Route path="/products" element={<Products />} />
-                <Route path="/products/:id" element={<ProductDetail />} />
-                <Route path="/categories" element={<Categories />} />
-                <Route path="/cart" element={<Cart />} />
+              <Routes>
+                <Route path="/" element={<Layout />}>
+                  <Route index element={<Home />} />
+                  <Route path="/products" element={<Products />} />
+                  <Route path="/products/:id" element={<ProductDetail />} />
+                  <Route path="/categories" element={<Categories />} />
+                  <Route path="/cart" element={<Cart />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/signup" element={<Signup />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/signup" element={<Signup />} />
                 <Route path="/orders" element={<OrderList />} />
                 <Route path="/wishlist" element={<Wishlist />} />
-                <Route path="*" element={<NotFound />} />
-              </Route>
-            </Routes>
+                  <Route path="*" element={<NotFound />} />
+                </Route>
+              </Routes>
           </BrowserRouter>
-        </TooltipProvider>
-      </CartProvider>
-    </AuthProvider>
+            </TooltipProvider>
+        </CartProvider>
+      </AuthProvider>
   </QueryClientProvider>
 );
 
